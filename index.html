@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Monitor - SO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ff-sans: 'Google Sans', 'Google Sans Text', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --ff-mono: 'JetBrains Mono', monospace;
+
+      --body-bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-dim: #f1f5f9;
+      --surface-bright: #ffffff;
+      --surface-container: #f8fafc;
+      --surface-container-high: #e2e8f0;
+      --on-surface: #0f172a;
+      --on-surface-variant: #64748b;
+      --primary: #0284c7;
+      --primary-container: #e0f2fe;
+      --accent: #38bdf8;
+      --accent-container: #e0f2fe;
+      --outline: #cbd5e1;
+      --stroke-default: #e2e8f0;
+      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+
+      --r-m: 14px;
+      --r-full: 999px;
+    }
+
+    :root[data-theme="dark"] {
+      --body-bg: #090d16;
+      --surface: #0f172a;
+      --surface-dim: #0b1120;
+      --surface-bright: #1e293b;
+      --surface-container: #111c30;
+      --surface-container-high: #24344d;
+      --on-surface: #f1f5f9;
+      --on-surface-variant: #94a3b8;
+      --primary: #38bdf8;
+      --primary-container: #0c4a6e;
+      --accent: #0284c7;
+      --accent-container: rgba(56, 189, 248, 0.15);
+      --outline: #334155;
+      --stroke-default: #1e293b;
+      --shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.4);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      font-family: var(--ff-sans);
+      color: var(--on-surface);
+      background: var(--body-bg);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .widget-container {
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Header Card */
+    .header-card {
+      padding: 16px 20px;
+      background: var(--surface);
+      border-radius: var(--r-m);
+      border: 1px solid var(--stroke-default);
+      box-shadow: var(--shadow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .header-title-group h2 {
+      margin: 0 0 4px 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--on-surface);
+      letter-spacing: -0.01em;
+    }
+
+    .header-subtitle {
+      margin: 0;
+      font-size: 13px;
+      color: var(--on-surface-variant);
+    }
+
+    .theme-toggle-btn {
+      background: var(--surface-dim);
+      color: var(--on-surface);
+      border: 1px solid var(--outline);
+      border-radius: var(--r-full);
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: 0.2s ease;
+    }
+
+    .theme-toggle-btn:hover {
+      background: var(--surface-container-high);
+    }
+
+    /* Diagram Viewport */
+    .diagram-viewport {
+      width: 100%;
+      background: var(--surface);
+      border-radius: var(--r-m);
+      border: 1px solid var(--stroke-default);
+      box-shadow: var(--shadow);
+      padding: 18px 12px 14px 12px;
+      position: relative;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .diagram-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    /* SVG Zones */
+    .zone-bg {
+      fill: var(--surface-container);
+      stroke: var(--outline);
+      stroke-width: 1.2px;
+      transition: fill 0.3s ease, stroke 0.3s ease;
+    }
+
+    .zone-active-bg {
+      fill: var(--surface-bright);
+      stroke: var(--primary);
+      stroke-width: 1.8px;
+      filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.15));
+      transition: fill 0.3s ease, stroke 0.3s ease;
+    }
+
+    .zone-title {
+      font-family: var(--ff-sans);
+      font-size: 13px;
+      font-weight: 600;
+      fill: var(--on-surface);
+      transition: fill 0.3s ease;
+    }
+
+    .zone-subtitle {
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-style: italic;
+      fill: var(--on-surface-variant);
+      transition: fill 0.3s ease;
+    }
+
+    .connector-line {
+      fill: none;
+      stroke: var(--on-surface-variant);
+      stroke-width: 1.4px;
+      stroke-linecap: round;
+      stroke-dasharray: 0 4;
+      transition: stroke 0.3s ease;
+    }
+
+    .pill-label-bg {
+      fill: var(--surface-bright);
+      stroke: var(--outline);
+      stroke-width: 1px;
+      transition: fill 0.3s ease, stroke 0.3s ease;
+    }
+
+    .pill-label-text {
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      font-weight: 500;
+      fill: var(--on-surface);
+      text-anchor: middle;
+      dominant-baseline: central;
+      transition: fill 0.3s ease;
+    }
+
+    /* Thread Nodes & Animations */
+    .thread-node {
+      transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease;
+      cursor: default;
+      will-change: transform, opacity;
+    }
+
+    .thread-pill {
+      fill: var(--surface-bright);
+      stroke: var(--outline);
+      stroke-width: 1.2px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+      transition: fill 0.3s ease, stroke 0.3s ease, filter 0.3s ease;
+    }
+
+    .thread-node.is-active .thread-pill {
+      fill: var(--accent-container);
+      stroke: var(--primary);
+      stroke-width: 2px;
+      filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.5));
+    }
+
+    .thread-node.is-waiting .thread-pill {
+      fill: var(--surface-dim);
+      stroke: var(--outline);
+    }
+
+    .thread-text {
+      font-family: var(--ff-sans);
+      font-size: 13px;
+      font-weight: 500;
+      fill: var(--on-surface);
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+      transition: fill 0.3s ease;
+    }
+
+    .thread-node.is-active .thread-text {
+      fill: var(--primary);
+      font-weight: 700;
+    }
+
+    /* Event Log Callout */
+    .event-card {
+      padding: 14px 18px;
+      background: var(--surface);
+      border-radius: var(--r-m);
+      border: 1px solid var(--stroke-default);
+      border-left: 4px solid var(--primary);
+      box-shadow: var(--shadow);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .event-label {
+      font-family: var(--ff-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .event-text {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--on-surface);
+      transition: color 0.3s ease;
+    }
+
+    /* Control Deck */
+    .control-deck {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border-radius: var(--r-m);
+      border: 1px solid var(--stroke-default);
+      box-shadow: var(--shadow);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    .control-btn {
+      flex: 1 1 calc(50% - 6px);
+      min-width: 140px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      font-family: var(--ff-sans);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: var(--r-full);
+      border: 1px solid var(--outline);
+      background: var(--surface-dim);
+      color: var(--on-surface);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .control-btn:hover:not(:disabled) {
+      background: var(--surface-container-high);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .control-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .control-btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      border-color: var(--outline);
+      transform: none;
+    }
+
+    .control-btn.btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .control-btn.btn-primary:hover:not(:disabled) {
+      background: #0284c7;
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.4);
+    }
+
+    @media (min-width: 600px) {
+      .control-btn {
+        flex: 1 1 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="widget-container">
+  <!-- Title Header -->
+  <div class="header-card">
+    <div class="header-title-group">
+      <h2 class="header-title">Monitor de Exclusión Mutua</h2>
+      <p class="header-subtitle">Sistemas Operativos — Flujo de Hilos y Variable de Condición</p>
+    </div>
+    <button type="button" class="theme-toggle-btn" id="themeToggle" aria-label="Cambiar Tema">
+      <span id="themeIcon">☀️</span> <span id="themeText">Modo Claro</span>
+    </button>
+  </div>
+
+  <!-- Interactive SVG Diagram with Animated Thread Nodes -->
+  <div class="diagram-viewport">
+    <svg class="diagram-svg" viewBox="0 0 660 270" aria-label="Diagrama de Arquitectura de un Monitor">
+      <defs>
+        <!-- Marker for dotted caret arrow -->
+        <marker id="lumi-caret" viewBox="0 0 10 10" refX="7.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto">
+          <path d="M 3 1.2 L 7.5 5 L 3 8.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="connector-line"></path>
+        </marker>
+      </defs>
+
+      <!-- Zone 1: Entry Queue (Cola de Entrada) -->
+      <rect x="20" y="25" width="170" height="220" rx="16" class="zone-bg"></rect>
+      <text x="105" y="48" class="zone-title" text-anchor="middle">Cola de Entrada</text>
+      <text x="105" y="65" class="zone-subtitle" text-anchor="middle">Hilos en espera externa</text>
+
+      <!-- Zone 2: Monitor Interior (Cerrojo Activo) -->
+      <rect x="225" y="25" width="210" height="220" rx="16" class="zone-active-bg"></rect>
+      <text x="330" y="48" class="zone-title" text-anchor="middle">Monitor (Exclusión Mutua)</text>
+      <text x="330" y="65" class="zone-subtitle" text-anchor="middle">1 Hilo Activo Ejecutando</text>
+
+      <!-- Zone 3: Condition Variable Queue (Cola de Condición) -->
+      <rect x="470" y="25" width="170" height="220" rx="16" class="zone-bg"></rect>
+      <text x="555" y="48" class="zone-title" text-anchor="middle">Var. de Condición</text>
+      <text x="555" y="65" class="zone-subtitle" text-anchor="middle">cond.wait() [Bloqueados]</text>
+
+      <!-- Connectors & Transition Paths -->
+      <!-- Entry -> Monitor (Entry Arrow) -->
+      <path d="M 190 125 L 217 125" class="connector-line" marker-end="url(#lumi-caret)"></path>
+
+      <!-- Monitor -> Condition Queue (wait() Arrow) -->
+      <path d="M 435 110 L 462 110" class="connector-line" marker-end="url(#lumi-caret)"></path>
+      <rect x="424" y="99" width="36" height="22" rx="11" class="pill-label-bg"></rect>
+      <text x="442" y="110" class="pill-label-text">wait</text>
+
+      <!-- Condition Queue -> Entry Queue (signal() Return Loop) -->
+      <path d="M 555 245 L 555 260 Q 555 268 539 268 L 121 268 Q 105 268 105 260 L 105 245" class="connector-line" marker-end="url(#lumi-caret)"></path>
+      <rect x="302" y="257" width="56" height="22" rx="11" class="pill-label-bg"></rect>
+      <text x="330" y="268" class="pill-label-text">signal()</text>
+
+      <!-- Exit Arrow (Terminar y Salir) -->
+      <path d="M 330 245 L 330 260" class="connector-line" marker-end="url(#lumi-caret)"></path>
+
+      <!-- Dynamic Thread Layer (Populated via JS) -->
+      <g id="threadLayer"></g>
+    </svg>
+  </div>
+
+  <!-- Real-time Event Explanation Panel -->
+  <div class="event-card" id="eventCard">
+    <div class="event-label">Estado del Sistema Operativo</div>
+    <p class="event-text" id="eventText">El Hilo 1 tiene el cerrojo del monitor y está ejecutando código. Los demás esperan afuera.</p>
+  </div>
+
+  <!-- Interactive Controls Deck -->
+  <div class="control-deck">
+    <button type="button" class="control-btn" id="btnAddThread">+ Nuevo Hilo</button>
+    <button type="button" class="control-btn" id="btnWait">Ejecutar wait()</button>
+    <button type="button" class="control-btn" id="btnSignal" disabled>Ejecutar signal()</button>
+    <button type="button" class="control-btn btn-primary" id="btnExit">Terminar y Salir</button>
+  </div>
+</div>
+
+<script>
+  // Initial OS State
+  const state = {
+    colaEntrada: ["Hilo 2", "Hilo 3"],
+    hiloActivo: "Hilo 1",
+    colaCondicion: [],
+    registroEventos: "El Hilo 1 tiene el cerrojo del monitor y está ejecutando código. Los demás esperan afuera.",
+    threadCounter: 3
+  };
+
+  // Fixed slot positions for visual stability
+  const SLOTS = {
+    active: { x: 330, y: 145 },
+    entry: [
+      { x: 105, y: 105 },
+      { x: 105, y: 150 },
+      { x: 105, y: 195 },
+      { x: 105, y: 230 }
+    ],
+    condition: [
+      { x: 555, y: 105 },
+      { x: 555, y: 150 },
+      { x: 555, y: 195 },
+      { x: 555, y: 230 }
+    ]
+  };
+
+  // Render or update thread nodes inside the SVG layer with smooth animations
+  function updateViz() {
+    try {
+      const layer = document.getElementById('threadLayer');
+      if (!layer) return;
+
+      // Update event description
+      const eventTextEl = document.getElementById('eventText');
+      if (eventTextEl) {
+        eventTextEl.textContent = state.registroEventos;
+      }
+
+      // Collect all active threads in system
+      const allThreads = [];
+
+      if (state.hiloActivo) {
+        allThreads.push({
+          id: state.hiloActivo,
+          pos: SLOTS.active,
+          type: 'active'
+        });
+      }
+
+      state.colaEntrada.forEach((id, idx) => {
+        const slot = SLOTS.entry[Math.min(idx, SLOTS.entry.length - 1)];
+        allThreads.push({
+          id: id,
+          pos: { x: slot.x, y: slot.y + (idx >= SLOTS.entry.length ? (idx - 3) * 18 : 0) },
+          type: 'entry'
+        });
+      });
+
+      state.colaCondicion.forEach((id, idx) => {
+        const slot = SLOTS.condition[Math.min(idx, SLOTS.condition.length - 1)];
+        allThreads.push({
+          id: id,
+          pos: { x: slot.x, y: slot.y + (idx >= SLOTS.condition.length ? (idx - 3) * 18 : 0) },
+          type: 'condition'
+        });
+      });
+
+      // Synchronize DOM elements (add / move / remove)
+      const existingNodes = new Map();
+      Array.from(layer.querySelectorAll('.thread-node')).forEach(el => {
+        existingNodes.set(el.dataset.id, el);
+      });
+
+      const currentIds = new Set(allThreads.map(t => t.id));
+
+      // Remove exited threads with fade-out animation
+      existingNodes.forEach((node, id) => {
+        if (!currentIds.has(id)) {
+          node.style.opacity = '0';
+          node.style.transform += ' scale(0.75) translateY(24px)';
+          setTimeout(() => node.remove(), 400);
+        }
+      });
+
+      // Create or position threads with animated transition
+      allThreads.forEach(t => {
+        let node = existingNodes.get(t.id);
+        const isActive = t.type === 'active';
+
+        if (!node) {
+          node = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          node.setAttribute('class', `thread-node ${isActive ? 'is-active' : 'is-waiting'}`);
+          node.dataset.id = t.id;
+
+          // Initial spawn position
+          const startX = t.type === 'entry' ? -60 : t.pos.x;
+          const startY = t.pos.y;
+          node.style.transform = `translate(${startX}px, ${startY}px)`;
+          node.style.opacity = '0';
+
+          node.innerHTML = `
+            <rect x="-48" y="-16" width="96" height="32" rx="16" class="thread-pill"></rect>
+            <text x="0" y="0" class="thread-text">${t.id}</text>
+          `;
+
+          layer.appendChild(node);
+          node.getBoundingClientRect(); // force reflow for smooth transition
+        }
+
+        // Update class and target position (triggers CSS transition)
+        node.setAttribute('class', `thread-node ${isActive ? 'is-active' : 'is-waiting'}`);
+        node.style.opacity = '1';
+        node.style.transform = `translate(${t.pos.x}px, ${t.pos.y}px)`;
+      });
+
+      // Update button interactive states
+      const btnWait = document.getElementById('btnWait');
+      const btnSignal = document.getElementById('btnSignal');
+      const btnExit = document.getElementById('btnExit');
+
+      if (btnWait) btnWait.disabled = !state.hiloActivo;
+      if (btnExit) btnExit.disabled = !state.hiloActivo;
+      if (btnSignal) btnSignal.disabled = state.colaCondicion.length === 0;
+
+    } catch (err) {
+      console.error("Render error in updateViz:", err);
+    }
+  }
+
+  // --- User Interaction Controls ---
+
+  // 1. Add New Thread
+  document.getElementById('btnAddThread')?.addEventListener('click', () => {
+    state.threadCounter++;
+    const newName = `Hilo ${state.threadCounter}`;
+
+    if (!state.hiloActivo) {
+      state.hiloActivo = newName;
+      state.registroEventos = `Se creó el ${newName}. Al estar el monitor desocupado, entra directamente a ejecutar código.`;
+    } else {
+      state.colaEntrada.push(newName);
+      state.registroEventos = `Se creó el ${newName} y se posicionó en la Cola de Entrada exterior a la espera del cerrojo.`;
+    }
+    updateViz();
+  });
+
+  // 2. Execute wait()
+  document.getElementById('btnWait')?.addEventListener('click', () => {
+    if (!state.hiloActivo) return;
+
+    const current = state.hiloActivo;
+    state.colaCondicion.push(current);
+
+    if (state.colaEntrada.length > 0) {
+      state.hiloActivo = state.colaEntrada.shift();
+      state.registroEventos = `${current} ejecutó wait(): se bloquea y pasa a la Variable de Condición, liberando el cerrojo. ${state.hiloActivo} toma el cerrojo e ingresa al Monitor.`;
+    } else {
+      state.hiloActivo = null;
+      state.registroEventos = `${current} ejecutó wait(): libera el cerrojo y se bloquea en la Variable de Condición. El Monitor queda desocupado.`;
+    }
+    updateViz();
+  });
+
+  // 3. Execute signal()
+  document.getElementById('btnSignal')?.addEventListener('click', () => {
+    if (state.colaCondicion.length === 0) return;
+
+    const woken = state.colaCondicion.shift();
+
+    if (!state.hiloActivo) {
+      state.hiloActivo = woken;
+      state.registroEventos = `signal() despierta a ${woken} de la Variable de Condición. Como el monitor estaba libre, toma el cerrojo de inmediato.`;
+    } else {
+      state.colaEntrada.push(woken);
+      state.registroEventos = `signal() despierta a ${woken} de la Variable de Condición y lo traslada a la Cola de Entrada para recompetir por el cerrojo del Monitor.`;
+    }
+    updateViz();
+  });
+
+  // 4. Terminate & Exit
+  document.getElementById('btnExit')?.addEventListener('click', () => {
+    if (!state.hiloActivo) return;
+
+    const exiting = state.hiloActivo;
+
+    if (state.colaEntrada.length > 0) {
+      state.hiloActivo = state.colaEntrada.shift();
+      state.registroEventos = `${exiting} finalizó su sección crítica y sale del Monitor. ${state.hiloActivo} obtiene el cerrojo del monitor de inmediato.`;
+    } else {
+      state.hiloActivo = null;
+      state.registroEventos = `${exiting} finalizó y salió del Monitor. El Monitor queda libre para cualquier nuevo hilo.`;
+    }
+    updateViz();
+  });
+
+  // Theme Toggle Logic
+  const themeToggle = document.getElementById('themeToggle');
+  const themeIcon = document.getElementById('themeIcon');
+  const themeText = document.getElementById('themeText');
+
+  function updateThemeUI(theme) {
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      themeIcon.textContent = '☀️';
+      themeText.textContent = 'Modo Claro';
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      themeIcon.textContent = '🌙';
+      themeText.textContent = 'Modo Oscuro';
+    }
+  }
+
+  themeToggle?.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    updateThemeUI(next);
+  });
+
+  // Initial render
+  updateViz();
+</script>
+
+</body>
+</html>
